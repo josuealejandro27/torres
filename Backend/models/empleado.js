@@ -13,8 +13,8 @@ const EmpleadoSchema = new Schema({
   horario:    { type: String, enum: ['corrido', 'mixto'], required: true },
   entrada1:   { type: String, required: true },
   salida1:    { type: String, required: true },
-  entrada2:   { type: String }, // solo para horario mixto
-  salida2:    { type: String }, // solo para horario mixto
+  entrada2:   { type: String, required: function() { return this.horario === 'mixto'; } }, // solo para horario mixto
+  salida2:    { type: String, required: function() { return this.horario === 'mixto'; } }, // solo para horario mixto
   estatus:    { type: Boolean, default: true },
   rol:        { type: String, enum: ['empleado', 'admin'], default: 'empleado' },
   password:   { type: String, required: true }

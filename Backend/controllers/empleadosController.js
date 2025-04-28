@@ -1,29 +1,72 @@
+// Corregir el controlador de Empleados
 const Empleado = require('../models/empleado');
+const bcrypt = require('bcrypt'); // Agregar para manejar contraseñas seguras
 
 // Crear un nuevo empleado
 exports.createEmpleado = async (req, res) => {
   try {
     console.log('Datos recibidos:', req.body);
+    console.log('Archivo recibido:', req.file);
+
+    // Verificar que req.body exista
+    if (!req.body) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se recibieron datos del formulario'
+      });
+    }
 
     let fotoPath = '';
     if (req.file) {
       fotoPath = `uploads/${req.file.filename}`;
     }
 
+    // Verificar si hay una contraseña antes de intentar hacer hash
+    if (!req.body.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'La contraseña es obligatoria'
+      });
+    }
+
+    // Hash de la contraseña antes de guardarla
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+    // Configurar datos del empleado
     const empleadoData = {
-      ...req.body,
+      nombre: req.body.nombre,
+      nif: req.body.nif,
+      email: req.body.email,
+      telefono: req.body.telefono,
+      departamento: req.body.departamento,
+      puesto: req.body.puesto,
+      horario: req.body.horario,
+      entrada1: req.body.entrada1,
+      salida1: req.body.salida1,
+      password: hashedPassword, // Usar la contraseña hasheada
       foto: fotoPath,
-      estatus: true,  // Siempre activo
-      rol: 'empleado' // Siempre empleado
+      estatus: true,
+      rol: req.body.rol || 'empleado'
     };
+
+    // Manejar campos opcionales para horario mixto
+    if (empleadoData.horario === 'mixto') {
+      empleadoData.entrada2 = req.body.entrada2;
+      empleadoData.salida2 = req.body.salida2;
+    }
 
     const nuevoEmpleado = new Empleado(empleadoData);
     const empleadoGuardado = await nuevoEmpleado.save();
 
+    // Eliminar password de la respuesta
+    const empleadoResponse = empleadoGuardado.toObject();
+    delete empleadoResponse.password;
+
     res.status(201).json({
       success: true,
       message: 'Empleado creado exitosamente',
-      data: empleadoGuardado
+      data: empleadoResponse
     });
   } catch (error) {
     console.error('Error al crear empleado:', error);
@@ -34,7 +77,7 @@ exports.createEmpleado = async (req, res) => {
   }
 };
 
-// Los demás métodos quedan igual
+// Método de login mejorado con bcrypt
 exports.login = async (req, res) => {
   try {
     const { nif, password } = req.body;
@@ -42,8 +85,14 @@ exports.login = async (req, res) => {
     // Buscar empleado por NIF
     const empleado = await Empleado.findOne({ nif });
 
-    // Validar existencia y contraseña
-    if (!empleado || empleado.password !== password) {
+    // Validar existencia
+    if (!empleado) {
+      return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+    }
+
+    // Validar contraseña con bcrypt
+    const passwordMatch = await bcrypt.compare(password, empleado.password);
+    if (!passwordMatch) {
       return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
     }
 
