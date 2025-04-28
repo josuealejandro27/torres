@@ -1,6 +1,7 @@
 // Corregir el controlador de Empleados
 const Empleado = require('../models/empleado');
 const bcrypt = require('bcrypt'); // Agregar para manejar contraseñas seguras
+const mongoose = require('mongoose');
 
 // Crear un nuevo empleado
 exports.createEmpleado = async (req, res) => {
@@ -77,45 +78,42 @@ exports.createEmpleado = async (req, res) => {
   }
 };
 
+
 // Método de login mejorado con bcrypt
 exports.login = async (req, res) => {
   try {
     const { nif, password } = req.body;
-
     // Buscar empleado por NIF
     const empleado = await Empleado.findOne({ nif });
-
     // Validar existencia
     if (!empleado) {
       return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
     }
-
     // Validar contraseña con bcrypt
     const passwordMatch = await bcrypt.compare(password, empleado.password);
     if (!passwordMatch) {
       return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
     }
-
-    // Validar que sea rol admin
-    if (empleado.rol !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Acceso denegado' });
+    // Validar que el usuario esté activo
+    if (!empleado.estatus) {
+      return res.status(403).json({ success: false, message: 'Usuario inactivo' });
     }
-
+    
     // Login exitoso
     res.json({
       success: true,
       data: {
-        _id: empleado._id,
+        id: empleado._id, // Corregido: usar _id en lugar de *id
+        nif: empleado.nif,
         nombre: empleado.nombre,
         rol: empleado.rol
       }
     });
-
   } catch (error) {
+    console.error('Error en login:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 // Buscar empleado por NIF
 exports.getEmpleadoByNif = async (req, res) => {
   try {
