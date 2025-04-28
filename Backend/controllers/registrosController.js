@@ -127,8 +127,36 @@ async function buscarRegistros(req, res) {
   }
 }
 
+// 🔥 Método para actualizar solo el comentario
+async function updateComentario(req, res) {
+  try {
+    const { comentario } = req.body;
+    const { id } = req.params;
+
+    if (typeof comentario !== 'string') {
+      return res.status(400).json({ success: false, error: 'Comentario inválido' });
+    }
+
+    const registroActualizado = await Registro.findByIdAndUpdate(
+      id,
+      { comentario: comentario },
+      { new: true }
+    );
+
+    if (!registroActualizado) {
+      return res.status(404).json({ success: false, error: 'Registro no encontrado' });
+    }
+
+    res.json({ success: true, data: registroActualizado });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: 'Error al actualizar comentario' });
+  }
+}
+
 module.exports = {
   createRegistro,
   getRegistros,
-  buscarRegistros
+  buscarRegistros,
+  updateComentario // 🔥 Exportamos el nuevo
 };
